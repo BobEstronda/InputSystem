@@ -15,10 +15,10 @@ struct FInputActionMapping
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSystem|Member")
     UInputAction* InputAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSystem|Member")
     TSubclassOf<UInputResponse> InputResponseClass;
 };
 
@@ -28,9 +28,9 @@ class INPUTSYSTEM_API UInputConfig : public UDataAsset
 	GENERATED_BODY()
 	
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSystem|Member")
     UInputMappingContext* MappingContext;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSystem|Member")
     TArray<FInputActionMapping> ActionMappings;
 };
