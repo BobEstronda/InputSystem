@@ -12,8 +12,14 @@ void UInputResponseMove::Triggered(const FInputActionValue& Value)
     ACharacter* Character = Cast<ACharacter>(OwningActor);
     if (!Character) return;
 
-    FVector2D MoveVector = Value.Get<FVector2D>();
+    const FVector2D MoveVector = Value.Get<FVector2D>();
 
-    Character->AddMovementInput(Character->GetActorForwardVector(), MoveVector.Y);
-    Character->AddMovementInput(Character->GetActorRightVector(), MoveVector.X);
+	const FRotator Rotation = Character->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+ 
+	Character->AddMovementInput(ForwardDirection, MoveVector.Y);
+	Character->AddMovementInput(RightDirection, MoveVector.X);
 }
