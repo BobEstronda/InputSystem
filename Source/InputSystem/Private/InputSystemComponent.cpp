@@ -15,48 +15,95 @@ UInputSystemComponent::UInputSystemComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UInputSystemComponent::BeginPlay()
+APlayerController* UInputSystemComponent::RefreshPlayerController()
 {
-	Super::BeginPlay();
+    m_PlayerController = GetOwner()->IsA<APlayerController>() ? Cast<APlayerController>(GetOwner()) : Cast<APlayerController>(GetOwner()->GetInstigatorController());
 
+    return m_PlayerController.Get();
+}
+
+UEnhancedInputLocalPlayerSubsystem* UInputSystemComponent::RefreshEnhancedInputLocalPlayerSubsystem()
+{
+    m_EnhancedInputLocalPlayerSubsystem = GetPlayerController() ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetPlayerController()->GetLocalPlayer()) : nullptr;
+
+    return m_EnhancedInputLocalPlayerSubsystem.Get();
+}
+
+APlayerController* UInputSystemComponent::GetPlayerController()
+{
+    return m_PlayerController.Get() ? m_PlayerController.Get() : RefreshPlayerController();
+}
+
+UEnhancedInputLocalPlayerSubsystem* UInputSystemComponent::GetEnhancedInputLocalPlayerSubsystem()
+{
+    return m_EnhancedInputLocalPlayerSubsystem.Get() ? m_EnhancedInputLocalPlayerSubsystem.Get() : RefreshEnhancedInputLocalPlayerSubsystem();
+}
+
+void UInputSystemComponent::AddedInputConfig(UInputConfig* InputConfig)
+{
     if (!InputConfig)
     {
-        UE_LOG(LogTemp, Warning, TEXT("InputConfig not set!"));
+        UE_LOG(LogTemp, Warning, TEXT("Input Config is Invalid!"));
         return;
     }
 
-    APlayerController* PC = Cast<APlayerController>(GetOwner()->GetInstigatorController());
-    if (!PC) return;
-
-    UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-    if (Subsystem && InputConfig->MappingContext)
+    if (GetEnhancedInputLocalPlayerSubsystem() && InputConfig->MappingContext)
     {
-        Subsystem->AddMappingContext(InputConfig->MappingContext, 0);
+        GetEnhancedInputLocalPlayerSubsystem()->AddMappingContext(InputConfig->MappingContext, 0);
     }
 
     for (const auto& Mapping : InputConfig->ActionMappings)
     {
         if (Mapping.InputResponseClass)
         {
-            UInputResponse* nputResponse = NewObject<UInputResponse>(this, Mapping.InputResponseClass);
-            nputResponse->Initialize(GetOwner());
+            UInputResponse* InputResponse = NewObject<UInputResponse>(this, Mapping.InputResponseClass);
+            InputResponse->Initialize(GetPlayerController(), GetPlayerController()->GetPawn());
 
-            RuntimeActions.Add(Mapping.InputAction, nputResponse);
+            RuntimeActions.Add(Mapping.InputAction, InputResponse);
 
-            if (UInputComponent* EIC = Cast<APlayerController>(PC)->InputComponent)
+            if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(GetPlayerController()->InputComponent))
             {
-                if (UEnhancedInputComponent* EIC2 = Cast<UEnhancedInputComponent>(EIC))
-                {
-                    EIC2->BindAction(Mapping.InputAction, ETriggerEvent::Triggered,
-                        nputResponse, &UInputResponse::Triggered);
-                    EIC2->BindAction(Mapping.InputAction, ETriggerEvent::Started,
-                        nputResponse, &UInputResponse::Started);
-                    EIC2->BindAction(Mapping.InputAction, ETriggerEvent::Completed,
-                        nputResponse, &UInputResponse::Completed);
-                }
+                FRuntimeInputBinding InputBinding;
+                InputBinding.TriggeredHandle = EIC->BindAction(Mapping.InputAction, ETriggerEvent::Triggered, InputResponse, &UInputResponse::Triggered).GetHandle();
+                InputBinding.StartedHandle = EIC->BindAction(Mapping.InputAction, ETriggerEvent::Started, InputResponse, &UInputResponse::Started).GetHandle();
+                InputBinding.CompletedHandle = EIC->BindAction(Mapping.InputAction, ETriggerEvent::Completed, InputResponse, &UInputResponse::Completed).GetHandle();
+
+                RuntimeInputBindings.Add(Mapping.InputAction, InputBinding);
             }
         }
     }
-	
 }
 
+void UInputSystemComponent::RemoveInputConfig(UInputConfig* InputConfig)
+{
+    if (!InputConfig)
+    {
+        return;
+    }
+
+    if (GetEnhancedInputLocalPlayerSubsystem() && InputConfig->MappingContext)
+    {
+        GetEnhancedInputLocalPlayerSubsystem()->RemoveMappingContext(InputConfig->MappingContext);
+    }
+
+    if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(GetPlayerController()->InputComponent))
+    {
+        for (const auto& Mapping : InputConfig->ActionMappings)
+        {
+            if (!Mapping.InputAction)
+            {
+                continue;
+            }
+
+            const FRuntimeInputBinding& Binding = *RuntimeInputBindings.Find(Mapping.InputAction);
+
+            EIC->RemoveBindingByHandle(Binding.TriggeredHandle);
+            EIC->RemoveBindingByHandle(Binding.StartedHandle);
+            EIC->RemoveBindingByHandle(Binding.CompletedHandle);
+
+            RuntimeInputBindings.Remove(Mapping.InputAction);
+
+            RuntimeActions.Remove(Mapping.InputAction);
+        }
+    }
+}

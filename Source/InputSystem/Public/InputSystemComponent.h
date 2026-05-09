@@ -10,20 +10,45 @@ class UInputConfig;
 class UInputAction;
 class UInputResponse;
 
+class APlayerController;
+class UEnhancedInputLocalPlayerSubsystem;
+
+USTRUCT()
+struct FRuntimeInputBinding
+{
+	GENERATED_BODY()
+
+	int32 TriggeredHandle = INDEX_NONE;
+	int32 StartedHandle = INDEX_NONE;
+	int32 CompletedHandle = INDEX_NONE;
+};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class INPUTSYSTEM_API UInputSystemComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
+	TWeakObjectPtr<APlayerController> m_PlayerController = nullptr;
+	TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> m_EnhancedInputLocalPlayerSubsystem = nullptr;
 public:	
 	UInputSystemComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UInputConfig* InputConfig;
+	APlayerController* RefreshPlayerController();
+	UEnhancedInputLocalPlayerSubsystem* RefreshEnhancedInputLocalPlayerSubsystem();
+
+	APlayerController* GetPlayerController();
+	UEnhancedInputLocalPlayerSubsystem* GetEnhancedInputLocalPlayerSubsystem();
+
+	UFUNCTION(BlueprintCallable)
+	void AddedInputConfig(UInputConfig* InputConfig);
+
+	UFUNCTION(BlueprintCallable)
+	void RemoveInputConfig(UInputConfig* InputConfig);
 
 protected:
-	virtual void BeginPlay() override;
-
 	UPROPERTY()
 	TMap<UInputAction*, UInputResponse*> RuntimeActions;
+
+	UPROPERTY()
+	TMap<UInputAction*, FRuntimeInputBinding> RuntimeInputBindings;
 };

@@ -7,9 +7,9 @@
 
 void UInputResponseMove::Triggered(const FInputActionValue& Value)
 {
-    if (!OwningActor) return;
+    if (!m_AvatarActor) return;
 
-    ACharacter* Character = Cast<ACharacter>(OwningActor);
+    ACharacter* Character = Cast<ACharacter>(m_AvatarActor);
     if (!Character) return;
 
     const FVector2D MoveVector = Value.Get<FVector2D>();

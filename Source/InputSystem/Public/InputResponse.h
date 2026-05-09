@@ -7,6 +7,8 @@
 #include "InputActionValue.h"
 #include "InputResponse.generated.h"
 
+class AActor;
+class APlayerController;
 
 UCLASS(ABSTRACT, BlueprintType, Blueprintable)
 class INPUTSYSTEM_API UInputResponse : public UObject
@@ -15,10 +17,13 @@ class INPUTSYSTEM_API UInputResponse : public UObject
 	
 protected:
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "InputSystem|Member")
-    AActor* OwningActor;
+    AActor* m_AvatarActor;
+
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "InputSystem|Member")
+    APlayerController* m_PlayerController;
 
 public:
-    virtual void Initialize(AActor* Owner) { OwningActor = Owner; }
+    virtual void Initialize(APlayerController* PlayerController, AActor* AvatarActor = nullptr);
 
     virtual void Triggered(const FInputActionValue& Value);
     virtual void Started(const FInputActionValue& Value);

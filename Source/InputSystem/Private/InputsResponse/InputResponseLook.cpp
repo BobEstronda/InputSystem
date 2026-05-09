@@ -6,14 +6,9 @@
 #include "GameFramework/Character.h"
 
 void UInputResponseLook::Triggered(const FInputActionValue& Value)
-{
-    if (!OwningActor) return;
-
-    APlayerController* PC = Cast<APlayerController>(OwningActor->GetInstigatorController());
-    if (!PC) return;
-
+{ 
     FVector2D LookAxis = Value.Get<FVector2D>();
 
-    PC->AddYawInput(LookAxis.X);
-    PC->AddPitchInput(LookAxis.Y);
+    m_PlayerController->AddYawInput(LookAxis.X);
+    m_PlayerController->AddPitchInput(LookAxis.Y);
 }

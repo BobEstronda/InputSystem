@@ -3,6 +3,12 @@
 
 #include "InputResponse.h"
 
+void UInputResponse::Initialize(APlayerController* PlayerController, AActor* AvatarActor)
+{
+	m_PlayerController = PlayerController;
+	m_AvatarActor = AvatarActor;
+}
+
 void UInputResponse::Triggered(const FInputActionValue& Value)
 {
 	OnTriggered(Value);
