@@ -35,6 +35,59 @@ struct FRuntimeInputBinding
 	int32 CompletedHandle = INDEX_NONE;
 };
 
+USTRUCT()
+struct FInputConfigContext
+{
+	GENERATED_BODY()
+
+	//int32 TriggeredHandle = INDEX_NONE;
+	//int32 StartedHandle = INDEX_NONE;
+	//int32 CompletedHandle = INDEX_NONE;
+
+	UPROPERTY()
+	TMap<UInputAction*, UInputResponse*> RuntimeActions;
+	UPROPERTY()
+	TMap<UInputAction*, FRuntimeInputBinding> RuntimeInputBindings;
+
+	void AddedRuntimeAction(UInputAction* InputAction, UInputResponse* InputResponse)
+	{
+		RuntimeActions.Add(InputAction, InputResponse);
+	}
+	void RemoveRuntimeAction(UInputAction* InputAction)
+	{
+		RuntimeActions.Remove(InputAction);
+	}
+
+	void AddedRuntimeInputBindings(UInputAction* InputAction, FRuntimeInputBinding& InputBinding)
+	{
+		RuntimeInputBindings.Add(InputAction, InputBinding);
+	}
+	void RemoveRuntimeInputBindinds(UInputAction* InputAction)
+	{
+		RuntimeInputBindings.Remove(InputAction);
+	}
+
+	UInputResponse* FindInputResponse(UInputAction* InputAction)
+	{
+		UInputResponse* Response = *RuntimeActions.Find(InputAction);
+		return Response;
+	}
+
+	FRuntimeInputBinding& FindInputBinding(UInputAction* InputAction)
+	{
+		FRuntimeInputBinding& InputBinding = *RuntimeInputBindings.Find(InputAction);
+		return InputBinding;
+	}
+};
+
+//USTRUCT()
+//struct FInputConfigBundle
+//{
+//	GENERATED_BODY()
+//
+//	TArray<UInputConfig*> AllInputConfig;
+//};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class INPUTSYSTEM_API UInputSystemComponent : public UActorComponent
 {
@@ -64,15 +117,21 @@ public:
 	void UnblockInputConfig(UInputConfig* InputConfig);
 
 	UFUNCTION(BlueprintCallable, Category = "Input System")
-	void BlockInput(UInputAction* InputAction);
+	void BlockInput(UInputConfig* Context, UInputAction* InputAction);
 
 	UFUNCTION(BlueprintCallable, Category = "Input System")
-	void UnblockInput(UInputAction* InputAction);
+	void UnblockInput(UInputConfig* Context, UInputAction* InputAction);
 
 protected:
-	UPROPERTY()
-	TMap<UInputAction*, UInputResponse*> RuntimeActions;
+	//UPROPERTY()
+	//TMap<UInputAction*, UInputResponse*> RuntimeActions;
+	//
+	//UPROPERTY()
+	//TMap<UInputAction*, FRuntimeInputBinding> RuntimeInputBindings;
 
 	UPROPERTY()
-	TMap<UInputAction*, FRuntimeInputBinding> RuntimeInputBindings;
+	TMap<UInputConfig*, FInputConfigContext> MappedInputConfig;
+
+	//UPROPERTY()
+	//TMap<UInputMappingContext*, FInputConfigBundle> MappedMappingContext;
 };
