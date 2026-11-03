@@ -59,11 +59,13 @@ void UInputSystemComponent::AddedInputConfig(UInputConfig* InputConfig)
         return;
     }
 
-    if (GetEnhancedInputLocalPlayerSubsystem() && InputConfig->MappingContext)
+    //FInputConfigBundle& ConfigBundle = *MappedMappingContext.Find(InputConfig->MappingContext);
+    if (GetEnhancedInputLocalPlayerSubsystem() && InputConfig->MappingContext && !GetEnhancedInputLocalPlayerSubsystem()->HasMappingContext(InputConfig->MappingContext))
     {
         GetEnhancedInputLocalPlayerSubsystem()->AddMappingContext(InputConfig->MappingContext, 0);
     }
 
+    FInputConfigContext ConfigContext;
     for (const auto& Mapping : InputConfig->ActionMappings)
     {
         if (Mapping.InputResponseClass)
@@ -71,7 +73,8 @@ void UInputSystemComponent::AddedInputConfig(UInputConfig* InputConfig)
             UInputResponse* InputResponse = NewObject<UInputResponse>(this, Mapping.InputResponseClass);
             InputResponse->Initialize(GetPlayerController(), GetPlayerController()->GetPawn());
 
-            RuntimeActions.Add(Mapping.InputAction, InputResponse);
+            //RuntimeActions.Add(Mapping.InputAction, InputResponse);
+            ConfigContext.AddedRuntimeAction(Mapping.InputAction, InputResponse);
 
             if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(GetPlayerController()->InputComponent))
             {
@@ -80,10 +83,13 @@ void UInputSystemComponent::AddedInputConfig(UInputConfig* InputConfig)
                 InputBinding.StartedHandle = EIC->BindAction(Mapping.InputAction, ETriggerEvent::Started, InputResponse, &UInputResponse::Started).GetHandle();
                 InputBinding.CompletedHandle = EIC->BindAction(Mapping.InputAction, ETriggerEvent::Completed, InputResponse, &UInputResponse::Completed).GetHandle();
 
-                RuntimeInputBindings.Add(Mapping.InputAction, InputBinding);
+                //RuntimeInputBindings.Add(Mapping.InputAction, InputBinding);
+                ConfigContext.AddedRuntimeInputBindings(Mapping.InputAction, InputBinding);
             }
         }
     }
+
+    MappedInputConfig.Add(InputConfig, ConfigContext);
 }
 
 void UInputSystemComponent::RemoveInputConfig(UInputConfig* InputConfig)
@@ -98,6 +104,7 @@ void UInputSystemComponent::RemoveInputConfig(UInputConfig* InputConfig)
         GetEnhancedInputLocalPlayerSubsystem()->RemoveMappingContext(InputConfig->MappingContext);
     }
 
+    FInputConfigContext& ConfigContex = *MappedInputConfig.Find(InputConfig);
     if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(GetPlayerController()->InputComponent))
     {
         for (const auto& Mapping : InputConfig->ActionMappings)
@@ -107,17 +114,22 @@ void UInputSystemComponent::RemoveInputConfig(UInputConfig* InputConfig)
                 continue;
             }
 
-            const FRuntimeInputBinding& Binding = *RuntimeInputBindings.Find(Mapping.InputAction);
+            const FRuntimeInputBinding& Binding = /**RuntimeInputBindings.Find(Mapping.InputAction)*/ ConfigContex.FindInputBinding(Mapping.InputAction);
 
             EIC->RemoveBindingByHandle(Binding.TriggeredHandle);
             EIC->RemoveBindingByHandle(Binding.StartedHandle);
             EIC->RemoveBindingByHandle(Binding.CompletedHandle);
 
-            RuntimeInputBindings.Remove(Mapping.InputAction);
+            //RuntimeInputBindings.Remove(Mapping.InputAction);
+            //
+            //RuntimeActions.Remove(Mapping.InputAction);
 
-            RuntimeActions.Remove(Mapping.InputAction);
+            ConfigContex.RemoveRuntimeInputBindinds(Mapping.InputAction);
+            ConfigContex.RemoveRuntimeAction(Mapping.InputAction);
         }
     }
+
+    MappedInputConfig.Remove(InputConfig);
 }
 
 void UInputSystemComponent::BlockInputConfig(UInputConfig* InputConfig)
@@ -129,7 +141,7 @@ void UInputSystemComponent::BlockInputConfig(UInputConfig* InputConfig)
             continue;
         }
 
-        BlockInput(Mapping.InputAction);
+        BlockInput(InputConfig, Mapping.InputAction);
     }
 }
 
@@ -142,22 +154,24 @@ void UInputSystemComponent::UnblockInputConfig(UInputConfig* InputConfig)
             continue;
         }
 
-        UnblockInput(Mapping.InputAction);
+        UnblockInput(InputConfig, Mapping.InputAction);
     }
 }
 
-void UInputSystemComponent::BlockInput(UInputAction* InputAction)
+void UInputSystemComponent::BlockInput(UInputConfig* Context, UInputAction* InputAction)
 {
-    UInputResponse* Response = *RuntimeActions.Find(InputAction);
+    FInputConfigContext& ConfigContext = *MappedInputConfig.Find(Context);
+    UInputResponse* Response = /**RuntimeActions.Find(InputAction)*/ ConfigContext.FindInputResponse(InputAction);
     if (Response)
     {
         Response->BlockResponse();
     }
 }
 
-void UInputSystemComponent::UnblockInput(UInputAction* InputAction)
+void UInputSystemComponent::UnblockInput(UInputConfig* Context, UInputAction* InputAction)
 {
-    UInputResponse* Response = *RuntimeActions.Find(InputAction);
+    FInputConfigContext& ConfigContext = *MappedInputConfig.Find(Context);
+    UInputResponse* Response = /**RuntimeActions.Find(InputAction)*/ ConfigContext.FindInputResponse(InputAction);
     if (Response)
     {
         Response->UnblockResponse();
